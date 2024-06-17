@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/odnobit/exporter/storage"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -8,7 +10,20 @@ import (
 
 const namespace = "mexample"
 
+var startTime time.Time
+
+func init() {
+	startTime = time.Now()
+}
+
+func getAppUptimeSec() float64 {
+	currentTime := time.Now()
+	uptime := currentTime.Sub(startTime)
+	return uptime.Seconds()
+}
+
 type Metrics struct {
+	AppUptimeSec           *prometheus.Desc
 	MessagesTotalCounter   *prometheus.Desc
 	MessagesFailedCounter  *prometheus.Desc
 	MessagesSuccessCounter *prometheus.Desc
@@ -16,6 +31,12 @@ type Metrics struct {
 
 func NewMetrics() *Metrics {
 	return &Metrics{
+		AppUptimeSec: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "app", "uptime"),
+			"application uptime in seconds",
+			nil,
+			nil,
+		),
 		MessagesTotalCounter: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "messages", "total"),
 			"total messages counter",
@@ -42,6 +63,11 @@ func (collector *Metrics) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (collector *Metrics) Collect(ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(
+		collector.AppUptimeSec,
+		prometheus.GaugeValue,
+		getAppUptimeSec(),
+	)
 	ch <- prometheus.MustNewConstMetric(
 		collector.MessagesTotalCounter,
 		prometheus.CounterValue,
